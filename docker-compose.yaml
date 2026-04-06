@@ -1,0 +1,154 @@
+services:
+  modbus-server:
+    build: ./modbus
+    container_name: modbus-server
+    depends_on:
+      - influxdb
+    networks:
+      ot_net_vlan10:
+      mgmt_net:
+    stdin_open: true
+    tty: true
+
+  modbus-client:
+    build: ./modbus
+    container_name: modbus-client
+    command: python client.py
+    restart: on-failure
+    depends_on:
+      - modbus-server
+      - influxdb
+    networks:
+      ot_net_vlan10:
+      mgmt_net:
+    stdin_open: true
+    tty: true
+
+  iec104-server:
+    build: ./iec104
+    container_name: iec104-server
+    depends_on:
+      - influxdb
+    networks:
+      ot_net_vlan10:
+      mgmt_net:
+    stdin_open: true
+    tty: true
+
+  iec104-client:
+    build: ./iec104
+    container_name: iec104-client
+    command: python client.py
+    restart: on-failure
+    depends_on:
+      - iec104-server
+      - influxdb
+    networks:
+      ot_net_vlan10:
+      mgmt_net:
+    stdin_open: true
+    tty: true
+
+  dnp3-server:
+    build: ./dnp3
+    container_name: dnp3-server
+    depends_on:
+      - influxdb
+    networks:
+      ot_net_vlan10:
+      mgmt_net:
+    stdin_open: true
+    tty: true
+
+  dnp3-client:
+    build: ./dnp3
+    container_name: dnp3-client
+    command: python client.py
+    restart: on-failure
+    depends_on:
+      - dnp3-server
+      - influxdb
+    networks:
+      ot_net_vlan10:
+      mgmt_net:
+    stdin_open: true
+    tty: true
+
+  opcua-server:
+    build: ./opcua
+    container_name: opcua-server
+    depends_on:
+      - influxdb
+    networks:
+      ot_net_vlan40:
+      mgmt_net:
+    stdin_open: true
+    tty: true
+
+  opcua-client:
+    build: ./opcua
+    container_name: opcua-client
+    command: python client.py
+    restart: on-failure
+    depends_on:
+      - opcua-server
+      - influxdb
+    networks:
+      ot_net_vlan40:
+      mgmt_net:
+    stdin_open: true
+    tty: true
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_ORG: scada-lab
+      DOCKER_INFLUXDB_INIT_BUCKET: scada-metrics
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: admin1234
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: scada-token-123
+    networks:
+      mgmt_net:
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - influxdb
+    networks:
+      mgmt_net:
+
+networks:
+  ot_net_vlan10:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.10.0/24
+          ip_range: 172.20.10.128/25
+          gateway: 172.20.10.1
+
+  ot_net_vlan40:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.40.0/24
+          ip_range: 172.20.40.128/25
+          gateway: 172.20.40.1
+
+  mgmt_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16

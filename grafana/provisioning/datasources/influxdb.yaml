@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    jsonData:
+      version: Flux
+      organization: scada-lab
+      defaultBucket: scada-metrics
+      tlsSkipVerify: true
+    secureJsonData:
+      token: scada-token-123
+    isDefault: true
