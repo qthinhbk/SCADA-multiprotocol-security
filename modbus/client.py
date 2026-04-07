@@ -40,16 +40,13 @@ def run_modbus_client():
             print(f"[READ] Register 0 = {result.registers[0]}")
             push_metric("read", result.registers[0])
 
-        state = cycle % 3
+        state = cycle % 2
         if state == 0:
             value = 0
             label = "NORMAL"
-        elif state == 1:
+        else:
             value = 1
             label = "WARNING"
-        else:
-            value = 99
-            label = "SHUTDOWN"
 
         print(f"[WRITE] Ghi trạng thái {label} ({value}) vào Register 0")
         client.write_register(0, value, device_id=1)

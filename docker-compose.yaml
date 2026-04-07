@@ -24,6 +24,20 @@ services:
     stdin_open: true
     tty: true
 
+  modbus-attacker:
+    build: ./modbus
+    container_name: modbus-attacker
+    command: python attacker.py
+    restart: on-failure
+    depends_on:
+      - modbus-server
+      - influxdb
+    networks:
+      ot_net_vlan10:
+      mgmt_net:
+    stdin_open: true
+    tty: true
+
   iec104-server:
     build: ./iec104
     container_name: iec104-server
@@ -114,6 +128,7 @@ services:
     networks:
       mgmt_net:
 
+
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -129,6 +144,7 @@ services:
       - influxdb
     networks:
       mgmt_net:
+
 
 networks:
   ot_net_vlan10:
