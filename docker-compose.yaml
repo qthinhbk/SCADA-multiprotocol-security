@@ -63,6 +63,20 @@ services:
     stdin_open: true
     tty: true
 
+  iec104-attacker:
+    build: ./iec104
+    container_name: iec104-attacker
+    command: python attacker.py
+    restart: on-failure
+    depends_on:
+      - iec104-server
+      - influxdb
+    networks:
+      ot_net_vlan10:
+      mgmt_net:
+    stdin_open: true  
+    tty: true
+
   dnp3-server:
     build: ./dnp3
     container_name: dnp3-server
@@ -86,6 +100,20 @@ services:
       ot_net_vlan10:
       mgmt_net:
     stdin_open: true
+    tty: true
+
+  dnp3-attacker:
+    build: ./dnp3
+    container_name: dnp3-attacker
+    command: python attacker.py
+    restart: on-failure
+    depends_on:
+      - dnp3-server
+      - influxdb
+    networks:
+      ot_net_vlan10:
+      mgmt_net:
+    stdin_open: true  
     tty: true
 
   opcua-server:
