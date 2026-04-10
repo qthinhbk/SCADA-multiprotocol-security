@@ -130,6 +130,19 @@ services:
     stdin_open: true
     tty: true
 
+  opcua-attacker:
+    build: ./opcua
+    container_name: opcua-attacker
+    command: python attacker.py
+    restart: on-failure
+    depends_on:
+      - opcua-server
+      - influxdb
+    networks:
+      ot_net_vlan40:
+    stdin_open: true
+    tty: true
+
   influxdb:
     image: influxdb:2.7
     container_name: influxdb
