@@ -1,18 +1,44 @@
 services:
-  ids-monitor:
+  # Zeek IDS - Network traffic analyzer
+  zeek-ids:
     image: zeek/zeek:latest
-    container_name: ids-monitor
+    container_name: zeek-ids
     cap_add:
       - NET_ADMIN
       - NET_RAW
     networks:
       - ot_net_vlan10
+      - ot_net_vlan20
+      - ot_net_vlan30
       - ot_net_vlan40
       - mgmt_net
     volumes:
-      - ./zeek/zeek_scripts:/opt/zeek/share/zeek/site/custom-scripts
-      - ./zeek/zeek_logs:/opt/zeek/logs
+      - ./zeek_scripts:/opt/zeek/share/zeek/site/custom-scripts
+      - ./zeek_logs:/opt/zeek/logs
     command: /bin/bash -c "zeek -C -i any local custom-scripts/main.zeek"
+    restart: unless-stopped
+
+  # IDS Monitor - Parse Zeek alerts and push to InfluxDB
+  ids-monitor:
+    image: python:3.11-slim
+    container_name: ids-monitor
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=scada-token-123
+      - INFLUXDB_ORG=scada-lab
+      - INFLUXDB_BUCKET=scada-metrics
+    volumes:
+      - ./zeek_scripts:/app
+      - ./zeek_logs:/opt/zeek/logs
+    working_dir: /app
+    command: /bin/bash -c "pip install influxdb-client && python ids_monitor.py"
+    depends_on:
+      - influxdb
+      - zeek-ids
+    networks:
+      - mgmt_net
+    restart: unless-stopped
   modbus-server:
     build: ./modbus
     container_name: modbus-server
