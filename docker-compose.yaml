@@ -15,7 +15,8 @@ services:
     volumes:
       - ./zeek_scripts:/opt/zeek/share/zeek/site/custom-scripts
       - ./zeek_logs:/opt/zeek/logs
-    command: /bin/bash -c "zeek -C -i any local custom-scripts/main.zeek"
+    working_dir: /opt/zeek/logs
+    command: /bin/bash -c "zeek -C -i eth0 /opt/zeek/share/zeek/site/custom-scripts/main.zeek"
     restart: unless-stopped
 
   # IDS Monitor - Parse Zeek alerts and push to InfluxDB
