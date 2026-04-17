@@ -1,4 +1,18 @@
 services:
+  ids-monitor:
+    image: zeek/zeek:latest
+    container_name: ids-monitor
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    networks:
+      - ot_net_vlan10
+      - ot_net_vlan40
+      - mgmt_net
+    volumes:
+      - ./zeek/zeek_scripts:/opt/zeek/share/zeek/site/custom-scripts
+      - ./zeek/zeek_logs:/opt/zeek/logs
+    command: /bin/bash -c "zeek -C -i any local custom-scripts/main.zeek"
   modbus-server:
     build: ./modbus
     container_name: modbus-server
