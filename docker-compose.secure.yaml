@@ -1,0 +1,315 @@
+services:
+  # ============================================
+  # Industrial Firewall Monitor (Phase 2)
+  # Monitors ACL enforcement and pushes metrics
+  # ============================================
+  firewall-monitor:
+    build: ./firewall
+    container_name: firewall-monitor
+    environment:
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=scada-token-123
+      - INFLUXDB_ORG=scada-lab
+      - INFLUXDB_BUCKET=scada-metrics
+    depends_on:
+      - influxdb
+    networks:
+      mgmt_net:
+    restart: unless-stopped
+
+  # ============================================
+  # MODBUS - VLAN 10 (172.20.10.0/24)
+  # Server + Client on OT VLAN (whitelisted)
+  # Attacker on quarantine (BLOCKED by ACL)
+  # ============================================
+  modbus-server:
+    build: ./modbus
+    container_name: modbus-server
+    depends_on:
+      - influxdb
+    networks:
+      ot_net_vlan10:
+        ipv4_address: 172.20.10.10
+    stdin_open: true
+    tty: true
+
+  modbus-client:
+    build: ./modbus
+    container_name: modbus-client
+    command: python client.py
+    restart: on-failure
+    depends_on:
+      - modbus-server
+      - influxdb
+    networks:
+      ot_net_vlan10:
+        ipv4_address: 172.20.10.20
+    stdin_open: true
+    tty: true
+
+  modbus-attacker:
+    build: ./modbus
+    container_name: modbus-attacker
+    command: python attacker_secure.py
+    restart: on-failure
+    depends_on:
+      - influxdb
+    environment:
+      - TARGET_HOST=172.20.10.10
+      - INFLUXDB_URL=http://172.20.15.200:8086
+    networks:
+      quarantine_vlan10:
+        ipv4_address: 172.20.15.100
+    stdin_open: true
+    tty: true
+
+  # ============================================
+  # IEC104 - VLAN 30 (172.20.30.0/24)
+  # ============================================
+  iec104-server:
+    build: ./iec104
+    container_name: iec104-server
+    depends_on:
+      - influxdb
+    networks:
+      ot_net_vlan30:
+        ipv4_address: 172.20.30.10
+    stdin_open: true
+    tty: true
+
+  iec104-client:
+    build: ./iec104
+    container_name: iec104-client
+    command: python client.py
+    restart: on-failure
+    depends_on:
+      - iec104-server
+      - influxdb
+    networks:
+      ot_net_vlan30:
+        ipv4_address: 172.20.30.20
+    stdin_open: true
+    tty: true
+
+  iec104-attacker:
+    build: ./iec104
+    container_name: iec104-attacker
+    command: python attacker_secure.py
+    restart: on-failure
+    depends_on:
+      - influxdb
+    environment:
+      - TARGET_HOST=172.20.30.10
+      - INFLUXDB_URL=http://172.20.35.200:8086
+    networks:
+      quarantine_vlan30:
+        ipv4_address: 172.20.35.100
+    stdin_open: true
+    tty: true
+
+  # ============================================
+  # DNP3 - VLAN 20 (172.20.20.0/24)
+  # ============================================
+  dnp3-server:
+    build: ./dnp3
+    container_name: dnp3-server
+    depends_on:
+      - influxdb
+    networks:
+      ot_net_vlan20:
+        ipv4_address: 172.20.20.10
+    stdin_open: true
+    tty: true
+
+  dnp3-client:
+    build: ./dnp3
+    container_name: dnp3-client
+    command: python client.py
+    restart: on-failure
+    depends_on:
+      - dnp3-server
+      - influxdb
+    networks:
+      ot_net_vlan20:
+        ipv4_address: 172.20.20.20
+    stdin_open: true
+    tty: true
+
+  dnp3-attacker:
+    build: ./dnp3
+    container_name: dnp3-attacker
+    command: python attacker_secure.py
+    restart: on-failure
+    depends_on:
+      - influxdb
+    environment:
+      - TARGET_HOST=172.20.20.10
+      - INFLUXDB_URL=http://172.20.25.200:8086
+    networks:
+      quarantine_vlan20:
+        ipv4_address: 172.20.25.100
+    stdin_open: true
+    tty: true
+
+  # ============================================
+  # OPC-UA - VLAN 40 (172.20.40.0/24)
+  # ============================================
+  opcua-server:
+    build: ./opcua
+    container_name: opcua-server
+    depends_on:
+      - influxdb
+    networks:
+      ot_net_vlan40:
+        ipv4_address: 172.20.40.10
+    stdin_open: true
+    tty: true
+
+  opcua-client:
+    build: ./opcua
+    container_name: opcua-client
+    command: python client.py
+    restart: on-failure
+    depends_on:
+      - opcua-server
+      - influxdb
+    networks:
+      ot_net_vlan40:
+        ipv4_address: 172.20.40.20
+    stdin_open: true
+    tty: true
+
+  opcua-attacker:
+    build: ./opcua
+    container_name: opcua-attacker
+    command: python attacker_secure.py
+    restart: on-failure
+    depends_on:
+      - influxdb
+    environment:
+      - TARGET_HOST=172.20.40.10
+      - INFLUXDB_URL=http://172.20.45.200:8086
+    networks:
+      quarantine_vlan40:
+        ipv4_address: 172.20.45.100
+    stdin_open: true
+    tty: true
+
+  # ============================================
+  # Monitoring Stack
+  # ============================================
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_ORG: scada-lab
+      DOCKER_INFLUXDB_INIT_BUCKET: scada-metrics
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: admin1234
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: scada-token-123
+    networks:
+      ot_net_vlan10:
+        ipv4_address: 172.20.10.200
+      ot_net_vlan20:
+        ipv4_address: 172.20.20.200
+      ot_net_vlan30:
+        ipv4_address: 172.20.30.200
+      ot_net_vlan40:
+        ipv4_address: 172.20.40.200
+      quarantine_vlan10:
+        ipv4_address: 172.20.15.200
+      quarantine_vlan20:
+        ipv4_address: 172.20.25.200
+      quarantine_vlan30:
+        ipv4_address: 172.20.35.200
+      quarantine_vlan40:
+        ipv4_address: 172.20.45.200
+      mgmt_net:
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - influxdb
+    networks:
+      mgmt_net:
+
+networks:
+  # OT VLANs - Server + Client (whitelisted)
+  ot_net_vlan10:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.10.0/24
+          gateway: 172.20.10.1
+
+  ot_net_vlan20:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.20.0/24
+          gateway: 172.20.20.1
+
+  ot_net_vlan30:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.30.0/24
+          gateway: 172.20.30.1
+
+  ot_net_vlan40:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.40.0/24
+          gateway: 172.20.40.1
+
+  # Quarantine VLANs - Attackers (BLOCKED from OT)
+  quarantine_vlan10:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.20.15.0/24
+          gateway: 172.20.15.1
+
+  quarantine_vlan20:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.20.25.0/24
+          gateway: 172.20.25.1
+
+  quarantine_vlan30:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.20.35.0/24
+          gateway: 172.20.35.1
+
+  quarantine_vlan40:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.20.45.0/24
+          gateway: 172.20.45.1
+
+  mgmt_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
