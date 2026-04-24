@@ -17,6 +17,48 @@ services:
       mgmt_net:
     restart: unless-stopped
 
+  zeek-ids:
+    image: zeek/zeek:latest
+    container_name: zeek-ids
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    network_mode: "host"
+    # networks:
+    #   - ot_net_vlan10
+    #   - ot_net_vlan20
+    #   - ot_net_vlan30
+    #   - ot_net_vlan40
+    #   - mgmt_net
+    volumes:
+      - ./zeek_scripts:/opt/zeek/share/zeek/site/custom-scripts
+      - ./zeek_logs:/opt/zeek/logs
+    working_dir: /opt/zeek/logs
+    command: /bin/bash -c "zeek -C -i eth0 /opt/zeek/share/zeek/site/custom-scripts/main.zeek"
+    restart: unless-stopped
+
+  # IDS Monitor - Parse Zeek alerts and push to InfluxDB
+  ids-monitor:
+    image: python:3.11-slim
+    container_name: ids-monitor
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=scada-token-123
+      - INFLUXDB_ORG=scada-lab
+      - INFLUXDB_BUCKET=scada-metrics
+    volumes:
+      - ./zeek_scripts:/app
+      - ./zeek_logs:/opt/zeek/logs
+    working_dir: /app
+    command: /bin/bash -c "pip install influxdb-client && python ids_monitor.py"
+    depends_on:
+      - influxdb
+      - zeek-ids
+    networks:
+      - mgmt_net
+    restart: unless-stopped
+
   # ============================================
   # MODBUS - VLAN 10 (172.20.10.0/24)
   # Server + Client on OT VLAN (whitelisted)

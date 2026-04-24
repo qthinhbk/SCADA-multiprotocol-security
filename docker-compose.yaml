@@ -6,12 +6,13 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
-    networks:
-      - ot_net_vlan10
-      - ot_net_vlan20
-      - ot_net_vlan30
-      - ot_net_vlan40
-      - mgmt_net
+    network_mode: "host"
+    # networks:
+    #   - ot_net_vlan10
+    #   - ot_net_vlan20
+    #   - ot_net_vlan30
+    #   - ot_net_vlan40
+    #   - mgmt_net
     volumes:
       - ./zeek_scripts:/opt/zeek/share/zeek/site/custom-scripts
       - ./zeek_logs:/opt/zeek/logs
