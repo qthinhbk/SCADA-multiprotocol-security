@@ -6,11 +6,12 @@ export {
     redef enum Notice::Type += {
         OPCUA_Unauthorized_Write,
         OPCUA_Brute_Force,
-        OPCUA_Flood_Attack
+        OPCUA_Flood_Attack,
+        OPCUA_SetPoint_Manipulation_Attack
     };
 
-    # Whitelist IPs allowed to write OPC-UA
-    const allowed_clients: set[addr] = { 172.20.40.20 };
+    # Whitelist IPs allowed to write OPC-UA (ot_net_vlan40)
+    const allowed_clients: set[addr] = { 172.20.40.20, 172.20.40.10, 172.20.40.200 };
     
     # Thresholds
     const flood_threshold = 100;  # requests per minute
@@ -37,6 +38,9 @@ event tcp_packet(c: connection, is_orig: bool, flags: string, seq: count, ack: c
         last_reset = network_time();
     }
     
+    # Increment command count safely
+    if ( src !in req_counts )
+        req_counts[src] = 0;
     req_counts[src] += 1;
     
     # Check for flood attack
@@ -47,9 +51,19 @@ event tcp_packet(c: connection, is_orig: bool, flags: string, seq: count, ack: c
                 $conn=c,
                 $identifier=cat(src, "flood")]);
     }
-    
-    # Check for unauthorized client
-    if ( src !in allowed_clients && |payload| > 0 )
+
+    # Bắt hành vi thay đổi thông số "SetPoint" của OPC-UA
+    if ( payload == /.*SetPoint.*/ )
+    {
+        if ( src !in allowed_clients )
+        {
+            NOTICE([$note=OPCUA_SetPoint_Manipulation_Attack,
+                    $msg=fmt("CANH BAO CRITICAL: Phat hien hanh vi ghi vao bien SetPoint (kiem soat tai turbine) tu IP: %s", src),
+                    $conn=c,
+                    $identifier=cat(src, "setpoint")]);
+        }
+    }
+    else if ( src !in allowed_clients && |payload| > 0 )
     {
         NOTICE([$note=OPCUA_Unauthorized_Write,
                 $msg=fmt("Unauthorized OPC-UA access from %s", src),

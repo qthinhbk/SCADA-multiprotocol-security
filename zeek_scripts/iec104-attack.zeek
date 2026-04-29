@@ -45,7 +45,9 @@ event tcp_packet(c: connection, is_orig: bool, flags: string, seq: count, ack: c
         last_reset = network_time();
     }
     
-    # Increment command count
+    # Increment command count safely
+    if ( src !in cmd_counts )
+        cmd_counts[src] = 0;
     cmd_counts[src] += 1;
     
     # Check for flood attack
@@ -75,7 +77,7 @@ event tcp_packet(c: connection, is_orig: bool, flags: string, seq: count, ack: c
         if ( type_id == C_SC_NA_1 )
         {
             NOTICE([$note=IEC104_C_SC_NA_1_Attack,
-                    $msg=fmt("Unauthorized C_SC_NA_1 (Single Command) from %s - Type ID: %d", src, type_id),
+                    $msg=fmt("CANH BAO CRITICAL: Phat hien lenh IEC104 C_SC_NA_1 (Yeu cau ngat cau dao OPEN) tu IP: %s", src),
                     $conn=c,
                     $identifier=cat(src, "C_SC_NA_1")]);
         }

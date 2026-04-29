@@ -1699,7 +1699,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"firewall\") |> filter(fn: (r) => r._field == \"blocked\") |> group(columns: [\"protocol\"]) |> sum()",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"firewall\") |> filter(fn: (r) => r._field == \"blocked\") |> group(columns: [\"protocol\"]) |> sum() |> group()",
           "refId": "A"
         }
       ],
@@ -1773,116 +1773,6 @@
       ],
       "title": "Block Rate Over Time",
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "center",
-            "displayMode": "auto",
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Metric"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 200
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Phase 1"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.displayMode",
-                "value": "color-background"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Phase 2"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.displayMode",
-                "value": "color-background"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 56
-      },
-      "id": 210,
-      "options": {
-        "footer": {
-          "enablePagination": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
-          },
-          "query": "\ndata = {\n    \"Metric\": [\"Attack Success Rate\", \"Blocked Rate\", \"Commands Executed\", \"MTTD (min)\"],\n    \"Phase 1\": [\"100%\", \"0%\", \"100/100\", \"N/A\"],\n    \"Phase 2\": [\"0%\", \"100%\", \"0/100\", \"1.11\"]\n}\narray.from(rows: [\n    {Metric: \"Attack Success Rate\", \"Phase 1\": \"100%\", \"Phase 2\": \"0%\"},\n    {Metric: \"Blocked Rate\", \"Phase 1\": \"0%\", \"Phase 2\": \"100%\"},\n    {Metric: \"Commands Executed\", \"Phase 1\": \"100/100\", \"Phase 2\": \"0/100\"},\n    {Metric: \"MTTD (minutes)\", \"Phase 1\": \"N/A\", \"Phase 2\": \"1.11\"}\n])\n",
-          "refId": "A"
-        }
-      ],
-      "title": "Phase 1 vs Phase 2 Comparison",
-      "type": "table"
     },
     {
       "collapsed": false,
@@ -2262,11 +2152,85 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"ids_alert\") |> group(columns: [\"protocol\"]) |> count()",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"ids_alert\") |> group(columns: [\"protocol\"]) |> count() |> group()",
           "refId": "A"
         }
       ],
       "title": "IDS Alerts per Protocol",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisLabel": "Blocked Count",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 79
+      },
+      "id": 307,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.6,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"firewall_action\") |> filter(fn: (r) => r._field == \"blocked\") |> group(columns: [\"protocol\"]) |> count() |> group()",
+          "refId": "A"
+        }
+      ],
+      "title": "Firewall Actions (Auto-Quarantine) by Protocol",
       "type": "barchart"
     }
   ],
