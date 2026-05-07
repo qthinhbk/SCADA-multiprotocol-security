@@ -149,7 +149,7 @@ async def run_opcua_attacker():
                         stats["write_success"] += 1
                         stats["successful"] += 1
                         push_metric("write", "latency", latency)
-                        push_metric("write", "node_value", malicious_setpoint)
+                        push_metric("write", "setpoint", malicious_setpoint)
                         
                         await asyncio.sleep(0.05)
                     except Exception as e:

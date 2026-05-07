@@ -46,7 +46,7 @@ def query_attacker_metrics(query_api):
         try:
             query = f'''
             from(bucket: "{INFLUXDB_BUCKET}")
-                |> range(start: -1m)
+                |> range(start: -10m)
                 |> filter(fn: (r) => r._measurement == "secure_attack")
                 |> filter(fn: (r) => r.container == "{container}")
                 |> filter(fn: (r) => r._field == "blocked" or r._field == "successful" or r._field == "total_attempts")

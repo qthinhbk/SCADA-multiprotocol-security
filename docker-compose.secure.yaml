@@ -18,6 +18,69 @@ services:
     restart: unless-stopped
 
   # ============================================
+  # QoS Router / Traffic Manager (Week 11)
+  # tc + HTB + iptables marking (3 priority levels)
+  # Start with: docker compose -f docker-compose.secure.yaml --profile qos up -d
+  # ============================================
+  qos-router:
+    build: ./qos
+    container_name: qos-router
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    profiles:
+      - qos
+    environment:
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=scada-token-123
+      - INFLUXDB_ORG=scada-lab
+      - INFLUXDB_BUCKET=scada-metrics
+      - QOS_MONITOR_INTERVAL=10
+      - QOS_TOTAL_RATE=100mbit
+    depends_on:
+      - influxdb
+    networks:
+      ot_net_vlan10:
+        ipv4_address: 172.20.10.254
+      ot_net_vlan20:
+        ipv4_address: 172.20.20.254
+      ot_net_vlan30:
+        ipv4_address: 172.20.30.254
+      ot_net_vlan40:
+        ipv4_address: 172.20.40.254
+      mgmt_net:
+        ipv4_address: 172.21.0.254
+    restart: unless-stopped
+
+  # ============================================
+  # Optional congestion tool (iperf3/hping3)
+  # Start with: docker compose -f docker-compose.secure.yaml --profile qos-demo up -d qos-flooder
+  # ============================================
+  qos-flooder:
+    image: debian:12-slim
+    container_name: qos-flooder
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    profiles:
+      - qos-demo
+    command: >
+      sh -c "export DEBIAN_FRONTEND=noninteractive &&
+      apt-get update &&
+      apt-get install -y --no-install-recommends iperf3 hping3 procps iproute2 &&
+      rm -rf /var/lib/apt/lists/* &&
+      ip route replace 172.20.20.0/24 via 172.20.10.254 &&
+      ip route replace 172.20.30.0/24 via 172.20.10.254 &&
+      ip route replace 172.20.40.0/24 via 172.20.10.254 &&
+      echo '[qos-flooder] ready. Use docker exec to run iperf3/hping3 commands.' &&
+      tail -f /dev/null"
+    networks:
+      ot_net_vlan10:
+        ipv4_address: 172.20.10.253
+      mgmt_net:
+    restart: unless-stopped
+
+  # ============================================
   # MODBUS - VLAN 10 (172.20.10.0/24)
   # Server + Client on OT VLAN (whitelisted)
   # Attacker on quarantine (BLOCKED by ACL)

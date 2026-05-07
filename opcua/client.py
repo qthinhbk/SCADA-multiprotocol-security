@@ -14,11 +14,12 @@ _write_api = _influx.write_api(write_options=SYNCHRONOUS)
 
 def push_metric(action, value):
     try:
+        field_name = "wind_speed" if action == "read" else "setpoint"
         point = (
             Point("opcua")
             .tag("container", "opcua-client")
             .tag("action", action)
-            .field("node_value", float(value))
+            .field(field_name, float(value))
         )
         _write_api.write(bucket=INFLUX_BUCKET, record=point)
     except Exception as e:

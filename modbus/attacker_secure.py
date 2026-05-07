@@ -102,6 +102,7 @@ def run_modbus_attacker():
                 print(f"[BLOCKED] Kết nối bị chặn! (Connection refused)")
                 push_metric("blocked", "blocked", 1)
                 push_stats()
+                push_secure_stats()
                 time.sleep(30)
                 continue
                 

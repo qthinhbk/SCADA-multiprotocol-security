@@ -108,9 +108,13 @@ def run_dnp3_attacker():
                     print("[BLOCKED] Kết nối bị chặn hoặc timeout!")
                     push_metric("blocked", "blocked", 1)
                     push_stats()
-                    client.stop()
-                    time.sleep(30)
-                    continue
+                    break
+
+            if connection.state != c104.ConnectionState.OPEN:
+                push_secure_stats()
+                client.stop()
+                time.sleep(30)
+                continue
 
             print(f"[OK] Kết nối thành công đến DNP3 Server!")
 
