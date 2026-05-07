@@ -1,20 +1,33 @@
 services:
   # ============================================
-  # Industrial Firewall Monitor (Phase 2)
-  # Monitors ACL enforcement and pushes metrics
+  # Industrial Firewall Service (Phase 2)
+  # Monitors ACL enforcement, pushes metrics, and applies iptables blocks
   # ============================================
   firewall-monitor:
     build: ./firewall
     container_name: firewall-monitor
+    cap_add:
+      - NET_ADMIN
     environment:
       - INFLUXDB_URL=http://influxdb:8086
       - INFLUXDB_TOKEN=scada-token-123
       - INFLUXDB_ORG=scada-lab
       - INFLUXDB_BUCKET=scada-metrics
+    volumes:
+      - ./zeek_scripts/blacklist.acl:/tmp/blacklist.acl:ro
     depends_on:
       - influxdb
     networks:
+      ot_net_vlan10:
+      ot_net_vlan20:
+      ot_net_vlan30:
+      ot_net_vlan40:
+      quarantine_vlan10:
+      quarantine_vlan20:
+      quarantine_vlan30:
+      quarantine_vlan40:
       mgmt_net:
+    privileged: true
     restart: unless-stopped
 
   # ============================================
