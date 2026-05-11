@@ -1,5 +1,6 @@
 import c104
 import time
+import os
 import socket
 import threading
 from influxdb_client import InfluxDBClient, Point
@@ -47,6 +48,7 @@ class ControlCenter:
             ip=ip, port=port, init=c104.Init.ALL
         )
         self.station = self.connection.add_station(common_address=1)
+        self.running = True
 
         # ── Monitoring points ───────────────────────────────────────
         self.voltage        = self.station.add_point(io_address=20,  type=c104.Type.M_ME_NC_1)
@@ -88,7 +90,7 @@ class ControlCenter:
 
     # ── Periodic General Interrogation ──────────────────────────────
     def periodic_gi(self):
-        while True:
+        while self.running:
             time.sleep(30)
             if self.connection.is_connected:
                 ok = self.connection.interrogation(
@@ -102,7 +104,7 @@ class ControlCenter:
     def automated_control(self):
         """Luân phiên gửi lệnh CLOSE / OPEN mỗi 15 s (cho demo & test)."""
         cycle = 0
-        while True:
+        while self.running:
             time.sleep(15)
             if not self.connection.is_connected:
                 continue
@@ -131,7 +133,7 @@ class ControlCenter:
             time.sleep(3)
             retries += 1
             if retries > 20:
-                print("[SCADA] ✗ Connection timeout — exiting.")
+                print("[SCADA] Connection timeout; retrying.")
                 return
 
         print(f"[SCADA] ✓ Đã kết nối IED tại {self.connection.ip}:{self.connection.port}")
@@ -142,11 +144,29 @@ class ControlCenter:
         try:
             while True:
                 time.sleep(1)
+                if not self.connection.is_connected:
+                    print("[SCADA] Connection lost; reconnecting.")
+                    return
         except KeyboardInterrupt:
             print("\n[SCADA] Shutting down.")
+            raise
+        finally:
+            self.running = False
+            try:
+                self.client.stop()
+            except Exception:
+                pass
 
 
 # ── Entry-point ─────────────────────────────────────────────────────
 if __name__ == "__main__":
-    scada = ControlCenter()
-    scada.run()
+    target_host = os.environ.get("TARGET_HOST", "iec104-server")
+    while True:
+        try:
+            scada = ControlCenter(host=target_host)
+            scada.run()
+        except KeyboardInterrupt:
+            break
+        except Exception as exc:
+            print(f"[SCADA] Client error: {exc}; retrying.")
+        time.sleep(5)

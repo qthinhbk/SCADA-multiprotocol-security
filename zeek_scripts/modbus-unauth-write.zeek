@@ -11,7 +11,7 @@ export {
     };
 
     # Định nghĩa các IP được phép ghi (Whitelist)
-    const allowed_writers: set[addr] = { 172.20.10.10 };
+    const allowed_writers: set[addr] = { 172.20.10.20 };
 }
 
 # 1. Phát hiện ghi Modbus trái phép (Từ IP lạ)

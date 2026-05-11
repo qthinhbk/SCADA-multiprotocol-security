@@ -4,6 +4,7 @@ IDS Monitor - Parse Zeek notice.log and push alerts to InfluxDB
 """
 import os
 import json
+import re
 import time
 from datetime import datetime
 from influxdb_client import InfluxDBClient, Point
@@ -14,7 +15,14 @@ INFLUX_TOKEN = os.environ.get("INFLUXDB_TOKEN", "scada-token-123")
 INFLUX_ORG = os.environ.get("INFLUXDB_ORG", "scada-lab")
 INFLUX_BUCKET = os.environ.get("INFLUXDB_BUCKET", "scada-metrics")
 
-NOTICE_LOG = "/opt/zeek/logs/notice.log"
+NOTICE_LOG = os.environ.get("NOTICE_LOG", "/opt/zeek/logs/notice.log")
+BLACKLIST_FILE = os.environ.get("BLACKLIST_FILE", "blacklist.acl")
+WHITELIST_FILE = os.environ.get("WHITELIST_FILE", "whitelist.conf")
+READ_EXISTING_NOTICE_LOG = os.environ.get("READ_EXISTING_NOTICE_LOG", "false").strip().lower() in {"1", "true", "yes"}
+BLOCKED_IP_RE = re.compile(r"BLOCKED IP: (\d+\.\d+\.\d+\.\d+)")
+
+# Load whitelist IPs at startup
+WHITELIST_IPS = set()
 
 # Stats
 stats = {
@@ -25,16 +33,48 @@ stats = {
     "opcua_alerts": 0
 }
 
-def connect_influx():
-    """Connect to InfluxDB"""
+def connect_influx(retries=30, delay=5):
+    """Connect to InfluxDB with startup retry."""
+    for attempt in range(retries):
+        try:
+            client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+            client.ping()
+            write_api = client.write_api(write_options=SYNCHRONOUS)
+            print(f"[IDS_MONITOR] Connected to InfluxDB at {INFLUX_URL}")
+            return client, write_api
+        except Exception as e:
+            print(f"[IDS_MONITOR] Waiting for InfluxDB... ({attempt + 1}/{retries}) {e}")
+            time.sleep(delay)
+
+    print("[ERROR] InfluxDB connection failed after retries")
+    return None, None
+
+def load_whitelist():
+    """Load whitelist IPs from configuration file"""
+    global WHITELIST_IPS
+    WHITELIST_IPS.clear()
+    
     try:
-        client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
-        write_api = client.write_api(write_options=SYNCHRONOUS)
-        print(f"[IDS_MONITOR] Connected to InfluxDB at {INFLUX_URL}")
-        return client, write_api
+        with open(WHITELIST_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                # Skip comments and empty lines
+                if not line or line.startswith("#"):
+                    continue
+                # Simple IP validation
+                if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", line):
+                    WHITELIST_IPS.add(line)
+        
+        if WHITELIST_IPS:
+            print(f"[WHITELIST] Loaded {len(WHITELIST_IPS)} whitelisted IPs:")
+            for ip in sorted(WHITELIST_IPS):
+                print(f"  - {ip}")
+        else:
+            print(f"[WHITELIST] No IPs found in {WHITELIST_FILE}")
+    except FileNotFoundError:
+        print(f"[WHITELIST] File not found: {WHITELIST_FILE}, no whitelist protection active")
     except Exception as e:
-        print(f"[ERROR] InfluxDB connection failed: {e}")
-        return None, None
+        print(f"[WHITELIST] Error loading whitelist: {e}")
 
 def parse_notice_line(line):
     """Parse a JSON notice log line"""
@@ -57,26 +97,55 @@ def categorize_alert(note_type):
         return "opcua"
     return "unknown"
 
+
+def is_already_blacklisted(src_ip):
+    """Return True if src_ip is already present in blacklist file."""
+    try:
+        with open(BLACKLIST_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                match = BLOCKED_IP_RE.search(line)
+                if match and match.group(1) == src_ip:
+                    return True
+    except FileNotFoundError:
+        return False
+    return False
+
 def trigger_firewall_block(write_api, src_ip, protocol, threat_type):
     """Active Response: Automatically quarantine attacker IP"""
+    
+    # ===== WHITELIST PROTECTION =====
+    if src_ip in WHITELIST_IPS:
+        print(f"[WHITELIST-PROTECTED] IP {src_ip} is whitelisted, skipping blacklist for threat: {threat_type}")
+        return
+    
     critical_threats = [
         "modbus_shutdown_attack", 
         "iec104_c_sc_na_1_attack", 
         "dnp3_direct_operate_attack", 
-        "dnp3_cold_restart_attack", 
-        "opcua_setpoint_manipulation_attack"
+        "dnp3_cold_restart_attack",
+        "dnp3_unauthorized_write",
+        "opcua_setpoint_manipulation_attack",
+        "opcua_unauthorized_write",
+        "opcua_flood_attack"
     ]
     
     # Rút gọn chuỗi note để check (loại bỏ phần namespace nếu có, vd: ModbusAuth::Modbus_Shutdown_Attack)
     threat_lower = threat_type.lower().split("::")[-1]
     
+    # Debug logging to see what threat_type we're receiving
+    print(f"[DEBUG] Checking threat: '{threat_type}' -> normalized: '{threat_lower}'")
+    
     if threat_lower in critical_threats:
+        if is_already_blacklisted(src_ip):
+            print(f"[FIREWALL-IPS] IP {src_ip} already blacklisted, skip duplicate entry")
+            return
+
         print(f"\n[FIREWALL-IPS] Auto-quarantined IP {src_ip} due to {threat_type}!")
-        
+
         # Ghi vào file blacklist giả lập Firewall v2
-        with open("blacklist.acl", "a") as f:
+        with open(BLACKLIST_FILE, "a", encoding="utf-8") as f:
             f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - BLOCKED IP: {src_ip} - PROTOCOL: {protocol.upper()} - REASON: {threat_type}\n")
-            
+
         # PUSH action lên InfluxDB để Grafana vẽ chart Firewall Actions
         try:
             point = (
@@ -149,7 +218,10 @@ def tail_notice_log(write_api):
     
     last_stats_push = time.time()
     last_inode = os.stat(NOTICE_LOG).st_ino if hasattr(os.stat(NOTICE_LOG), 'st_ino') else 0
-    f = open(NOTICE_LOG, 'r')
+    f = open(NOTICE_LOG, "r", encoding="utf-8")
+    if not READ_EXISTING_NOTICE_LOG:
+        f.seek(0, os.SEEK_END)
+        print("[IDS_MONITOR] Starting at end of existing notice.log; only new alerts will be processed.")
     
     while True:
         line = f.readline()
@@ -171,7 +243,7 @@ def tail_notice_log(write_api):
                 if current_inode != last_inode or current_size < current_pos:
                     print(f"[IDS_MONITOR] Detected notice.log rotation, re-opening...")
                     f.close()
-                    f = open(NOTICE_LOG, 'r')
+                    f = open(NOTICE_LOG, "r", encoding="utf-8")
                     last_inode = current_inode
                     continue
             except (OSError, FileNotFoundError):
@@ -192,6 +264,9 @@ def main():
     print("=" * 50)
     print("  Zeek IDS Monitor - SCADA Lab")
     print("=" * 50)
+    
+    # Load whitelist configuration
+    load_whitelist()
     
     client, write_api = connect_influx()
     if not write_api:

@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1
 
-RUN apt-get update && apt-get install -y iptables && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y iptables iproute2 procps tcpdump && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -14,4 +14,7 @@ COPY firewall_rules.sh /app/
 COPY active_blocker.py /app/
 COPY whitelist.conf /app/
 
-CMD ["sh", "-c", "bash /app/firewall_rules.sh && (python /app/firewall_monitor.py & python /app/active_blocker.py & wait)"]
+COPY entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]

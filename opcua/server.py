@@ -14,13 +14,13 @@ _influx = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
 _write_api = _influx.write_api(write_options=SYNCHRONOUS)
 
 
-def push_metric(action, value):
+def push_metric(action, value, field_name="wind_speed"):
     try:
         point = (
             Point("opcua")
             .tag("container", "opcua-server")
             .tag("action", action)
-            .field("node_value", float(value))
+            .field(field_name, float(value))
         )
         _write_api.write(bucket=INFLUX_BUCKET, record=point)
     except Exception as e:
@@ -53,11 +53,17 @@ async def run_opcua_server():
     async with server:
         t = 0
         while True:
+            # Update wind speed
             new_wind = round(12.5 + 7.5 * math.sin(t * 0.1), 2)
             current_wind = await wind_speed_var.read_value()
-            push_metric("read", current_wind)
+            push_metric("read", current_wind, "wind_speed")
             await wind_speed_var.write_value(new_wind)
-            push_metric("write", new_wind)
+            push_metric("write", new_wind, "wind_speed")
+            
+            # Also log setpoint
+            current_setpoint = await setpoint_var.read_value()
+            push_metric("write", current_setpoint, "setpoint")
+            
             t += 1
             await asyncio.sleep(2)
 

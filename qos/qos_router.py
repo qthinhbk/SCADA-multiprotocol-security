@@ -3,7 +3,7 @@
 
 - Applies HTB classes (P1/P2/P3) with tc
 - Classifies packets with iptables mangle marks
-- Exports QoS latency + drop metrics to InfluxDB
+- Exports QoS latency, class traffic, and drop metrics to InfluxDB
 """
 
 import os
@@ -25,6 +25,10 @@ INFLUXDB_BUCKET = os.environ.get("INFLUXDB_BUCKET", "scada-metrics")
 
 MONITOR_INTERVAL = int(os.environ.get("QOS_MONITOR_INTERVAL", "10"))
 TOTAL_RATE = os.environ.get("QOS_TOTAL_RATE", "100mbit")
+P1_PROBE_HOST = os.environ.get("QOS_P1_PROBE_HOST", "172.20.10.10")
+P1_PROBE_PORT = int(os.environ.get("QOS_P1_PROBE_PORT", "502"))
+P2_PROBE_HOST = os.environ.get("QOS_P2_PROBE_HOST", "172.20.40.10")
+P2_PROBE_PORT = int(os.environ.get("QOS_P2_PROBE_PORT", "4840"))
 
 # Priority classes
 CLASS_ROOT = "1:"
@@ -150,9 +154,9 @@ def setup_tc_for_interface(interface: str) -> None:
 
 def parse_tc_stats(interface: str) -> Dict[str, Dict[str, float]]:
     result = {
-        "1:10": {"packets": 0.0, "dropped": 0.0},
-        "1:20": {"packets": 0.0, "dropped": 0.0},
-        "1:30": {"packets": 0.0, "dropped": 0.0},
+        "1:10": {"packets": 0.0, "dropped": 0.0, "overlimits": 0.0},
+        "1:20": {"packets": 0.0, "dropped": 0.0, "overlimits": 0.0},
+        "1:30": {"packets": 0.0, "dropped": 0.0, "overlimits": 0.0},
     }
 
     proc = run(["tc", "-s", "class", "show", "dev", interface], check=False)
@@ -167,10 +171,13 @@ def parse_tc_stats(interface: str) -> Dict[str, Dict[str, float]]:
         if current and "Sent" in line and "pkt" in line:
             pkt_match = re.search(r"Sent\s+\d+\s+bytes\s+(\d+)\s+pkt", line)
             drop_match = re.search(r"dropped\s+(\d+)", line)
+            overlimit_match = re.search(r"overlimits\s+(\d+)", line)
             if pkt_match:
                 result[current]["packets"] = float(pkt_match.group(1))
             if drop_match:
                 result[current]["dropped"] = float(drop_match.group(1))
+            if overlimit_match:
+                result[current]["overlimits"] = float(overlimit_match.group(1))
             current = None
 
     return result
@@ -210,10 +217,8 @@ def probe_priority_latency() -> Tuple[float, float]:
         return float(statistics.median(vals))
 
     # Use direct network probes per class so QoS latency doesn't include app processing time.
-    # P1: control-path probe (Modbus control plane)
-    p1 = median_probe("172.20.10.10", 502)
-    # P2: monitoring-path probe (OPC-UA monitoring plane)
-    p2 = median_probe("172.20.40.10", 4840)
+    p1 = median_probe(P1_PROBE_HOST, P1_PROBE_PORT)
+    p2 = median_probe(P2_PROBE_HOST, P2_PROBE_PORT)
     return p1, p2
 
 
@@ -248,9 +253,9 @@ def push_qos_metrics(write_api, query_api, interfaces: List[str]) -> None:
     p1_latency_ms, p2_latency_ms = collect_latency_metrics(query_api)
 
     total = {
-        "1:10": {"packets": 0.0, "dropped": 0.0},
-        "1:20": {"packets": 0.0, "dropped": 0.0},
-        "1:30": {"packets": 0.0, "dropped": 0.0},
+        "1:10": {"packets": 0.0, "dropped": 0.0, "overlimits": 0.0},
+        "1:20": {"packets": 0.0, "dropped": 0.0, "overlimits": 0.0},
+        "1:30": {"packets": 0.0, "dropped": 0.0, "overlimits": 0.0},
     }
 
     for iface in interfaces:
@@ -258,6 +263,7 @@ def push_qos_metrics(write_api, query_api, interfaces: List[str]) -> None:
         for cls in total:
             total[cls]["packets"] += stats[cls]["packets"]
             total[cls]["dropped"] += stats[cls]["dropped"]
+            total[cls]["overlimits"] += stats[cls]["overlimits"]
 
     def drop_rate(cls: str) -> float:
         sent = total[cls]["packets"]
@@ -286,20 +292,29 @@ def push_qos_metrics(write_api, query_api, interfaces: List[str]) -> None:
 
     # Also export per-priority rows for bar chart by tag
     per_prio = [
-        ("p1_control", p1_drop),
-        ("p2_monitoring", p2_drop),
-        ("p3_best_effort", p3_drop),
+        ("p1_control", "1:10", p1_drop),
+        ("p2_monitoring", "1:20", p2_drop),
+        ("p3_best_effort", "1:30", p3_drop),
     ]
-    for priority, dr in per_prio:
+    for priority, cls, dr in per_prio:
         row = Point("qos_drop") \
             .tag("priority", priority) \
             .time(sample_time) \
             .field("drop_rate", round(dr, 4))
         write_api.write(bucket=INFLUXDB_BUCKET, record=row)
 
+        class_row = Point("qos_class") \
+            .tag("priority", priority) \
+            .time(sample_time) \
+            .field("packets", int(total[cls]["packets"])) \
+            .field("dropped", int(total[cls]["dropped"])) \
+            .field("overlimits", int(total[cls]["overlimits"]))
+        write_api.write(bucket=INFLUXDB_BUCKET, record=class_row)
+
     print(
         f"[QOS] P1 latency={p1_latency_ms:.2f}ms, P2 latency={p2_latency_ms:.2f}ms | "
-        f"Drop rates P1={p1_drop:.3f}% P2={p2_drop:.3f}% P3={p3_drop:.3f}%"
+        f"Packets P1={total['1:10']['packets']:.0f} P2={total['1:20']['packets']:.0f} P3={total['1:30']['packets']:.0f} | "
+        f"Drops P1={p1_drop:.3f}% P2={p2_drop:.3f}% P3={p3_drop:.3f}%"
     )
 
 

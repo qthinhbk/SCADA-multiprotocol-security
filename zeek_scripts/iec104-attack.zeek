@@ -12,7 +12,7 @@ export {
     };
 
     # Whitelist IPs allowed to send IEC104 commands
-    const allowed_controllers: set[addr] = { 172.20.20.20 };
+    const allowed_controllers: set[addr] = { 172.20.30.20 };
     
     # Threshold for flood detection (commands per minute)
     const flood_threshold = 50;
@@ -50,8 +50,8 @@ event tcp_packet(c: connection, is_orig: bool, flags: string, seq: count, ack: c
         cmd_counts[src] = 0;
     cmd_counts[src] += 1;
     
-    # Check for flood attack
-    if ( cmd_counts[src] > flood_threshold )
+    # Check for flood attack from non-whitelisted sources only.
+    if ( src !in allowed_controllers && cmd_counts[src] > flood_threshold )
     {
         NOTICE([$note=IEC104_Flood_Attack,
                 $msg=fmt("IEC104 flood attack detected from %s - %d commands/min", src, cmd_counts[src]),

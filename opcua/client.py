@@ -1,4 +1,5 @@
 import asyncio
+import os
 from asyncua import Client
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
@@ -34,7 +35,8 @@ class SubHandler:
 
 
 async def run_opcua_client():
-    url = "opc.tcp://opcua-server:4840/freeopcua/server/"
+    target_host = os.environ.get("TARGET_HOST", "opcua-server")
+    url = f"opc.tcp://{target_host}:4840/freeopcua/server/"
 
     async with Client(url=url) as client:
         print("Kết nối thành công đến OPC-UA Turbine Server!")

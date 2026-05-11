@@ -6,6 +6,11 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "links": [],
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
   "panels": [
     {
       "collapsed": false,
@@ -102,7 +107,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"iec104\") |> filter(fn: (r) => r._field == \"voltage\") |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false) |> filter(fn: (r) => r.container == \"iec104-client\") |> filter(fn: (r) => r.action == \"${action_iec104}\")",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"iec104\") |> filter(fn: (r) => r._field == \"voltage\") |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false) |> filter(fn: (r) => r.container == \"iec104-server\") |> filter(fn: (r) => r.action == \"${action_iec104}\")",
           "refId": "A"
         }
       ],
@@ -182,7 +187,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"iec104\") |> filter(fn: (r) => r._field == \"current\") |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false) |> filter(fn: (r) => r.container == \"iec104-client\") |> filter(fn: (r) => r.action == \"${action_iec104}\")",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"iec104\") |> filter(fn: (r) => r._field == \"current\") |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false) |> filter(fn: (r) => r.container == \"iec104-server\") |> filter(fn: (r) => r.action == \"${action_iec104}\")",
           "refId": "A"
         }
       ],
@@ -259,7 +264,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"iec104\") |> filter(fn: (r) => r._field == \"breaker_state\") |> last() |> filter(fn: (r) => r.container == \"iec104-client\") |> filter(fn: (r) => r.action == \"${action_iec104}\")",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"iec104\") |> filter(fn: (r) => r._field == \"breaker_state\") |> filter(fn: (r) => r.container == \"iec104-server\") |> last()",
           "refId": "A"
         }
       ],
@@ -317,7 +322,8 @@
               }
             ]
           },
-          "unit": "percent"
+          "decimals": 0,
+          "unit": "none"
         },
         "overrides": []
       },
@@ -349,7 +355,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"dnp3\") |> filter(fn: (r) => r._field == \"tank_level\") |> last() |> filter(fn: (r) => r.container == \"dnp3-client\") |> filter(fn: (r) => r.action == \"${action_dnp3}\")",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"dnp3\") |> filter(fn: (r) => r._field == \"tank_level\") |> last() |> filter(fn: (r) => r.container == \"dnp3-server\") |> filter(fn: (r) => r.action == \"${action_dnp3}\")",
           "refId": "A"
         }
       ],
@@ -421,7 +427,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"dnp3\") |> filter(fn: (r) => r._field == \"flow_rate\") |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false) |> filter(fn: (r) => r.container == \"dnp3-client\") |> filter(fn: (r) => r.action == \"${action_dnp3}\")",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"dnp3\") |> filter(fn: (r) => r._field == \"flow_rate\") |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false) |> filter(fn: (r) => r.container == \"dnp3-server\") |> filter(fn: (r) => r.action == \"${action_dnp3}\")",
           "refId": "A"
         }
       ],
@@ -498,7 +504,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"dnp3\") |> filter(fn: (r) => r._field == \"pump_state\") |> last() |> filter(fn: (r) => r.container == \"dnp3-client\") |> filter(fn: (r) => r.action == \"${action_dnp3}\")",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"dnp3\") |> filter(fn: (r) => r._field == \"pump_state\") |> filter(fn: (r) => r.container == \"dnp3-server\") |> last()",
           "refId": "A"
         }
       ],
@@ -615,7 +621,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"modbus\") |> filter(fn: (r) => r._field == \"register_value\") |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false) |> filter(fn: (r) => r.container == \"modbus-client\" or r.container == \"modbus-attacker\") |> filter(fn: (r) => r.action == \"${action_modbus}\")",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"modbus\") |> filter(fn: (r) => r._field == \"register_value\") |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false) |> filter(fn: (r) => r.container == \"modbus-server\" or r.container == \"modbus-attacker\") |> filter(fn: (r) => r.action == \"${action_modbus}\")",
           "refId": "A"
         }
       ],
@@ -701,7 +707,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"modbus\") |> filter(fn: (r) => r._field == \"register_value\") |> filter(fn: (r) => r.container == \"modbus-client\" or r.container == \"modbus-attacker\") |> filter(fn: (r) => r.action == \"${action_modbus}\") |> group() |> last()",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"modbus\") |> filter(fn: (r) => r._field == \"register_value\") |> filter(fn: (r) => r.container == \"modbus-server\" or r.container == \"modbus-attacker\") |> filter(fn: (r) => r.action == \"${action_modbus}\") |> group() |> last()",
           "refId": "A"
         }
       ],
@@ -799,7 +805,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"opcua\") |> filter(fn: (r) => r._field == \"wind_speed\") |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false) |> filter(fn: (r) => r.container == \"opcua-client\") |> filter(fn: (r) => r.action == \"read\")",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"opcua\") |> filter(fn: (r) => r._field == \"wind_speed\") |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false) |> filter(fn: (r) => r.container == \"opcua-server\") |> filter(fn: (r) => r.action == \"read\")",
           "refId": "A"
         }
       ],
@@ -872,7 +878,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"opcua\") |> filter(fn: (r) => r._field == \"wind_speed\") |> filter(fn: (r) => r.container == \"opcua-client\") |> filter(fn: (r) => r.action == \"read\") |> last()",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"opcua\") |> filter(fn: (r) => r._field == \"wind_speed\") |> filter(fn: (r) => r.container == \"opcua-server\") |> filter(fn: (r) => r.action == \"read\") |> last()",
           "refId": "A"
         }
       ],
@@ -961,7 +967,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"opcua\") |> filter(fn: (r) => r._field == \"setpoint\") |> filter(fn: (r) => r.container == \"opcua-client\") |> filter(fn: (r) => r.action == \"write\") |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"opcua\") |> filter(fn: (r) => r._field == \"setpoint\") |> filter(fn: (r) => r.container == \"opcua-server\") |> filter(fn: (r) => r.action == \"write\") |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "refId": "B"
         }
       ],
@@ -1040,7 +1046,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"opcua\") |> filter(fn: (r) => r._field == \"setpoint\") |> filter(fn: (r) => r.container == \"opcua-client\") |> filter(fn: (r) => r.action == \"write\") |> last()",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"opcua\") |> filter(fn: (r) => r._field == \"setpoint\") |> filter(fn: (r) => r.container == \"opcua-server\") |> filter(fn: (r) => r.action == \"write\") |> last()",
           "refId": "A"
         }
       ],
@@ -2158,7 +2164,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: -10m) |> filter(fn: (r) => r._measurement == \"firewall\") |> filter(fn: (r) => r._field == \"blocked\") |> group(columns: [\"protocol\"]) |> last() |> keep(columns: [\"_time\", \"protocol\", \"_value\"]) |> rename(columns: {_value: \"blocked_count\"})",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: -10m) |> filter(fn: (r) => r._measurement == \"firewall\") |> filter(fn: (r) => r._field == \"blocked\") |> group(columns: [\"protocol\"]) |> last() |> group() |> keep(columns: [\"protocol\", \"_value\"]) |> rename(columns: {_value: \"blocked_count\"})",
           "refId": "A"
         }
       ],
@@ -2234,12 +2240,189 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 90
+      },
+      "id": 207,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"firewall_stats\") |> filter(fn: (r) => r._field == \"false_positive_rate\") |> last()",
+          "refId": "A"
+        }
+      ],
+      "title": "False Positive Rate",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 94
+      },
+      "id": 208,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"firewall_stats\") |> filter(fn: (r) => r._field == \"total_whitelist_pass_count\") |> last()",
+          "refId": "A"
+        }
+      ],
+      "title": "Whitelist Pass Count",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 94
+      },
+      "id": 209,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"firewall_stats\") |> filter(fn: (r) => r._field == \"total_blacklisted_ips\") |> last()",
+          "refId": "A"
+        }
+      ],
+      "title": "Blacklisted IPs",
+      "type": "stat"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 95
+        "y": 99
       },
       "id": 400,
       "panels": [],
@@ -2264,7 +2447,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 96
+        "y": 100
       },
       "id": 401,
       "options": {
@@ -2312,7 +2495,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 96
+        "y": 100
       },
       "id": 402,
       "options": {
@@ -2352,7 +2535,8 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "percent"
+          "decimals": 0,
+          "unit": "none"
         },
         "overrides": []
       },
@@ -2360,7 +2544,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 96
+        "y": 100
       },
       "id": 403,
       "options": {
@@ -2380,12 +2564,141 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"qos_drop\") |> filter(fn: (r) => r._field == \"drop_rate\") |> group(columns: [\"priority\"]) |> last() |> keep(columns: [\"_time\", \"priority\", \"_value\"]) |> rename(columns: {_value: \"drop_rate\"})",
+          "query": "from(bucket: \"scada-metrics\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"qos_class\") |> filter(fn: (r) => r._field == \"packets\") |> group(columns: [\"priority\"]) |> last() |> group() |> keep(columns: [\"priority\", \"_value\"]) |> rename(columns: {_value: \"packets\"})",
           "refId": "A"
         }
       ],
-      "title": "Packet Drop Rate by Priority",
+      "title": "QoS Classified Packets by Priority",
       "type": "barchart"
+    },
+    {
+      "id": 404,
+      "title": "QoS Drop Rate (Congestion Action)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 108
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "axisLabel": "Drop Rate (%)",
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "showPoints": "never"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p1_control"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p2_monitoring"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p3_best_effort"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "from(bucket: \"scada-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"qos_drop\")\n  |> filter(fn: (r) => r[\"_field\"] == \"drop_rate\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "refId": "A"
+        }
+      ]
     }
   ],
   "refresh": "5s",

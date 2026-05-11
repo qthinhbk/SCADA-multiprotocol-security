@@ -114,7 +114,7 @@ def run_modbus_attacker():
             
             start_time = time.time()
             try:
-                result = client.read_holding_registers(address=0, count=99, slave=1)
+                result = client.read_holding_registers(address=0, count=99, device_id=1)
                 latency = (time.time() - start_time) * 1000
                 
                 if result.isError():
@@ -122,6 +122,7 @@ def run_modbus_attacker():
                     stats["blocked"] += 1
                     print(f"[BLOCKED] Recon bị chặn: {result}")
                     push_metric("recon_blocked", "blocked", 1)
+                    push_metric("blocked", "latency", 5000)
                 else:
                     stats["recon_success"] += 1
                     stats["successful"] += 1
@@ -133,6 +134,7 @@ def run_modbus_attacker():
                 stats["blocked"] += 1
                 print(f"[BLOCKED] Recon exception: {e}")
                 push_metric("recon_blocked", "blocked", 1)
+                
             
             time.sleep(2)
             
@@ -145,7 +147,7 @@ def run_modbus_attacker():
                 stats["total_attempts"] += 1
                 try:
                     start_time = time.time()
-                    res = client.write_register(0, 99, slave=1)
+                    res = client.write_register(0, 99, device_id=1)
                     latency = (time.time() - start_time) * 1000
                     
                     if res.isError():
@@ -178,6 +180,7 @@ def run_modbus_attacker():
             stats["total_attempts"] += 1
             print(f"[BLOCKED] Connection timeout - Firewall blocking!")
             push_metric("blocked", "blocked", 1)
+            push_metric("blocked", "latency", 5000)
             
         except ConnectionRefusedError:
             stats["connection_failures"] += 1
@@ -185,6 +188,7 @@ def run_modbus_attacker():
             stats["total_attempts"] += 1
             print(f"[BLOCKED] Connection refused - Firewall blocking!")
             push_metric("blocked", "blocked", 1)
+            push_metric("blocked", "latency", 5000)
             
         except Exception as e:
             stats["connection_failures"] += 1

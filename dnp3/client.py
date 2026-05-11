@@ -1,5 +1,6 @@
 import c104
 import time
+import os
 import socket
 import threading
 from influxdb_client import InfluxDBClient, Point
@@ -47,6 +48,7 @@ class DNP3Master:
             ip=ip, port=port, init=c104.Init.ALL
         )
         self.station = self.connection.add_station(common_address=1)
+        self.running = True
 
         # ── Monitoring points ───────────────────────────────────────
         self.pump_status = self.station.add_point(
@@ -96,7 +98,7 @@ class DNP3Master:
 
     # ── Periodic Integrity Poll (≈ DNP3 Class 0 poll) ──────────────
     def periodic_poll(self):
-        while True:
+        while self.running:
             time.sleep(30)
             if self.connection.is_connected:
                 ok = self.connection.interrogation(
@@ -110,7 +112,7 @@ class DNP3Master:
     def automated_control(self):
         """Luân phiên gửi CROB START / STOP mỗi 15 s."""
         cycle = 0
-        while True:
+        while self.running:
             time.sleep(15)
             if not self.connection.is_connected:
                 continue
@@ -138,7 +140,7 @@ class DNP3Master:
             time.sleep(3)
             retries += 1
             if retries > 20:
-                print("[MASTER] ✗ Connection timeout — exiting.")
+                print("[MASTER] Connection timeout; retrying.")
                 return
 
         print(f"[MASTER] ✓ Đã kết nối Outstation tại {self.connection.ip}:{self.connection.port}")
@@ -149,11 +151,29 @@ class DNP3Master:
         try:
             while True:
                 time.sleep(1)
+                if not self.connection.is_connected:
+                    print("[MASTER] Connection lost; reconnecting.")
+                    return
         except KeyboardInterrupt:
             print("\n[MASTER] Shutting down.")
+            raise
+        finally:
+            self.running = False
+            try:
+                self.client.stop()
+            except Exception:
+                pass
 
 
 # ── Entry-point ─────────────────────────────────────────────────────
 if __name__ == "__main__":
-    master = DNP3Master()
-    master.run()
+    target_host = os.environ.get("TARGET_HOST", "dnp3-server")
+    while True:
+        try:
+            master = DNP3Master(host=target_host)
+            master.run()
+        except KeyboardInterrupt:
+            break
+        except Exception as exc:
+            print(f"[MASTER] Client error: {exc}; retrying.")
+        time.sleep(5)
